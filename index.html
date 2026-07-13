@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CC Scanner Pro</title>
+<style>
+  :root{
+    --bg:#0b0e14;
+    --panel:#131722;
+    --panel2:#171b26;
+    --border:#242836;
+    --text:#d1d4dc;
+    --muted:#787b86;
+    --green:#26a69a;
+    --green-bg:rgba(38,166,154,0.12);
+    --red:#ef5350;
+    --red-bg:rgba(239,83,80,0.12);
+    --accent:#5b8def;
+    --mono: 'SF Mono', 'Cascadia Code', Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;}
+  a{color:inherit;}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-thumb{background:#2a2e3c;border-radius:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  #app{display:flex;flex-direction:column;height:100vh;}
+  header{
+    display:flex;align-items:center;gap:14px;
+    padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--border);
+    flex-wrap:wrap;
+  }
+  .logo{font-weight:700;letter-spacing:.3px;font-size:15px;display:flex;align-items:center;gap:8px;}
+  .logo .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);}
+  .logo .dot.off{background:var(--muted);box-shadow:none;}
+  .status{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .status b{color:var(--text);}
+  header .spacer{flex:1;}
+  header button, header select, header input[type=text]{
+    background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    padding:7px 12px;border-radius:6px;font-size:13px;cursor:pointer;font-family:var(--sans);
+  }
+  header button:hover{border-color:var(--accent);}
+  header button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
+  header button.primary:hover{filter:brightness(1.1);}
+  header button.danger{color:var(--red);}
+
+  #progressWrap{height:2px;background:var(--border);position:relative;overflow:hidden;}
+  #progressBar{height:100%;background:var(--accent);width:0%;transition:width .3s;}
+
+  #main{display:flex;flex:1;min-height:0;}
+  #settings{
+    width:320px;min-width:320px;background:var(--panel);border-right:1px solid var(--border);
+    overflow-y:auto;padding:16px;transition:margin-left .2s;
+  }
+  #settings.collapsed{margin-left:-320px;}
+  #settings h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:18px 0 8px;}
+  #settings h3:first-child{margin-top:0;}
+  .row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;font-size:13px;}
+  .row label{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
+  .row.disabled{opacity:.4;}
+  .row.disabled label{cursor:not-allowed;}
+  input[type=checkbox], input[type=radio]{accent-color:var(--accent);width:15px;height:15px;cursor:pointer;flex-shrink:0;}
+  input[type=number], input[type=text], input[type=password], textarea{
+    background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    padding:6px 8px;border-radius:5px;width:100%;font-size:13px;font-family:var(--mono);
+  }
+  textarea{resize:vertical;}
+  .field{margin:6px 0;}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .hint{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px;}
+  .pill{display:inline-block;font-size:10px;padding:1px 6px;border-radius:10px;background:var(--border);color:var(--muted);margin-left:6px;}
+
+  .strat-opt{
+    display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--border);
+    border-radius:8px;margin-bottom:6px;cursor:pointer;background:var(--panel2);
+  }
+  .strat-opt.active{border-color:var(--accent);background:rgba(91,141,239,0.1);}
+  .strat-opt input{margin-top:2px;}
+  .strat-opt .t{font-weight:600;font-size:13px;}
+  .strat-opt .d{font-size:11px;color:var(--muted);margin-top:2px;}
+
+  .seg{display:flex;gap:6px;flex-wrap:wrap;}
+  .seg button{
+    flex:1 1 50px;background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    padding:7px 4px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;
+  }
+  .seg button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .seg2 button{flex:1;}
+
+  #content{flex:1;min-width:0;display:flex;flex-direction:column;}
+  #toolbar{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  #toolbar input{flex:1;max-width:280px;}
+  #tableWrap{flex:1;overflow:auto;}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px;}
+  thead th{
+    position:sticky;top:0;background:var(--panel);text-align:left;padding:10px 14px;
+    font-family:var(--sans);font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--muted);border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap;
+  }
+  thead th:hover{color:var(--text);}
+  tbody tr{border-bottom:1px solid var(--border);cursor:pointer;}
+  tbody tr:hover{background:var(--panel2);}
+  tbody td{padding:9px 14px;white-space:nowrap;}
+  .sig-long{color:var(--green);background:var(--green-bg);padding:2px 8px;border-radius:4px;font-weight:600;}
+  .sig-short{color:var(--red);background:var(--red-bg);padding:2px 8px;border-radius:4px;font-weight:600;}
+  .sig-none{color:var(--muted);}
+  .pairname{font-weight:600;color:var(--text);}
+  .strat-tag{font-size:11px;color:var(--muted);}
+  .wghm-badge{font-size:11px;padding:1px 6px;border-radius:4px;}
+  #empty{padding:60px 20px;text-align:center;color:var(--muted);}
+  #empty b{color:var(--text);}
+
+  #tgPreviewBox{
+    background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px;
+    font-family:var(--mono);font-size:12px;line-height:1.6;margin-top:8px;white-space:pre-wrap;
+  }
+  footer{padding:6px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;}
+
+  @media (max-width:800px){
+    #settings{position:fixed;z-index:20;top:0;bottom:0;left:0;height:100%;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="logo"><span class="dot off" id="liveDot"></span>CC Scanner Pro</div>
+    <button id="toggleSettings">⚙ Instellingen</button>
+    <div class="status" id="statusText">Gestopt · 0 paren geladen</div>
+    <div class="spacer"></div>
+    <button id="startBtn" class="primary">▶ Start scanner</button>
+    <button id="stopBtn" class="danger" style="display:none;">■ Stop</button>
+  </header>
+  <div id="progressWrap"><div id="progressBar"></div></div>
+
+  <div id="main">
+    <div id="settings">
+
+      <h3>Exchange</h3>
+      <div class="row"><label><input type="checkbox" id="exCoinbaseSpot" checked> Coinbase Spot — USDC-paren</label></div>
+      <div class="row"><label><input type="checkbox" id="exCoinbaseUSD" checked> Coinbase Spot — USD-paren</label></div>
+      <div class="row"><label><input type="checkbox" id="exCoinbaseFutures"> Coinbase Futures (perpetuals)</label></div>
+      <div class="hint">Data komt van Coinbase's publieke Advanced Trade-endpoints (230+ USDC-paren via unified USD-USDC orderboeken). Futures bij Coinbase zijn altijd USDC-margined perpetuals — één listing per asset (bv. <code>BTC-PERP-INTX</code>), niet apart als USD- én USDC-paar zoals bij spot. Alleen beschikbaar via de primaire databron; in fallback-modus (Exchange API) worden futures overgeslagen.</div>
+
+      <h3>Timeframe</h3>
+      <div class="field">
+        <select id="tfSelect" style="width:100%;">
+          <option value="1">1 minuut</option>
+          <option value="2">2 minuten</option>
+          <option value="3">3 minuten</option>
+          <option value="5" selected>5 minuten</option>
+          <option value="15">15 minuten</option>
+          <option value="60">1 uur</option>
+          <option value="240">4 uur</option>
+        </select>
+      </div>
+      <div class="row"><label><input type="checkbox" id="earlyMode"> Detectie tijdens lopende candle</label></div>
+      <div class="hint">Signalen verschijnen meteen wanneer condities voldoen, zonder te wachten op candle-sluit. Snellere entries, maar meer kans op valse signalen.</div>
+
+      <h3>Strategie · Long / Entry</h3>
+      <div id="longStratGroup"></div>
+
+      <h3>Strategie · Short / Exit</h3>
+      <div id="shortStratGroup"></div>
+
+      <h3>Symbolen</h3>
+      <div class="seg seg2" id="symbolModeToggle">
+        <button data-mode="top" class="active">Top op volume</button>
+        <button data-mode="custom">Eigen lijst</button>
+      </div>
+      <div class="field" id="topNField" style="margin-top:10px;">
+        <label>Aantal top-paren: <b id="topNVal" style="color:var(--text);">200</b> <span id="topNMax" style="color:var(--muted);"></span></label>
+        <input type="range" id="topN" min="10" max="300" value="200" style="width:100%;">
+      </div>
+      <div class="field" id="customField" style="display:none;">
+        <textarea id="customSymbols" rows="4" placeholder="BTC-USDC&#10;ETH-USDC&#10;SOL-USDC"></textarea>
+        <div class="hint">Eén pair per regel of komma-gescheiden, in Coinbase-notatie (bv. BTC-USDC of BTC-USD).</div>
+      </div>
+      <div class="field">
+        <label>Minimum 24h volume (USDC/USD)</label>
+        <select id="volSelect" style="width:100%;">
+          <option value="0">Geen minimum</option>
+          <option value="250000" selected>&gt; 250k</option>
+          <option value="500000">&gt; 500k</option>
+          <option value="1000000">&gt; 1M</option>
+          <option value="5000000">&gt; 5M</option>
+        </select>
+      </div>
+
+      <h3>Filters (geen = alle signalen)</h3>
+      <label class="strat-opt" id="strongFilterOpt">
+        <input type="checkbox" id="strongFilter">
+        <div><div class="t">⭐ Sterke signalen</div><div class="d">Minstens 3 van 5 condities (RSI/MFI/WGHM/trend/BB-breedte).</div></div>
+      </label>
+      <label class="strat-opt" id="wghmFilterOpt">
+        <input type="checkbox" id="wghmFilter">
+        <div><div class="t">🟧 WGHM ≥ Mid</div><div class="d">Alleen Mid- of High-bevestiging in juiste richting (Low/None weg).</div></div>
+      </label>
+      <label class="strat-opt" id="trendFilterOpt">
+        <input type="checkbox" id="marketTrendFilter">
+        <div><div class="t">📈 Markttrend in richting</div><div class="d">Long: ≥ 50% bullish · Short: ≤ 50% bullish.</div></div>
+      </label>
+      <label class="strat-opt" id="divFilterOpt">
+        <input type="checkbox" id="divFilter">
+        <div><div class="t">🔄 Met RSI-divergentie</div><div class="d">Long: bullish divergentie · Short: bearish · vroeg omkeer-signaal.</div></div>
+      </label>
+
+      <h3>Scan-interval</h3>
+      <div class="seg" id="intervalGroup">
+        <button data-sec="30">30s</button>
+        <button data-sec="60" class="active">1m</button>
+        <button data-sec="120">2m</button>
+        <button data-sec="300">5m</button>
+        <button data-sec="600">10m</button>
+      </div>
+      <div class="hint">Een volledige ronde langs alle paren kan langer duren dan het gekozen interval (rate limit van de API); de scanner start dan meteen de volgende ronde.</div>
+
+      <h3>Meldingen</h3>
+      <div class="row"><label><input type="checkbox" id="nBrowser"> Browser notification</label></div>
+      <div class="row"><label><input type="checkbox" id="nSound"> Geluid</label></div>
+      <div class="row"><label><input type="checkbox" id="nTelegram"> Telegram</label></div>
+      <div class="field" id="tgFields" style="display:none;">
+        <label>Bot token</label>
+        <input type="password" id="tgToken" placeholder="123456:ABC-...">
+        <label style="margin-top:6px;">Chat ID</label>
+        <input type="text" id="tgChatId" placeholder="-1001234567890">
+        <div class="hint">Wordt alleen lokaal in je browser bewaard (localStorage), nooit verstuurd naar iets anders dan de Telegram Bot API zelf.</div>
+      </div>
+      <div class="hint" style="margin-top:10px;">Signaal-formaat in Telegram:</div>
+      <div id="tgPreviewBox"></div>
+
+      <h3>Over deze scanner</h3>
+      <div class="hint">
+        Volledig static — draait alleen in je browser, geen backend. Data komt rechtstreeks van Coinbase's publieke Advanced Trade-API. Bij veel paren geldt een rate limit van de API zelf; de scanner werkt daarom in rondes met een kleine wachtrij (zie voortgangsbalk) in plaats van alles instant tegelijk op te halen.
+      </div>
+    </div>
+
+    <div id="content">
+      <div id="toolbar">
+        <input type="text" id="search" placeholder="Zoek pair… (bv. BTC)">
+        <span class="status" id="countText"></span>
+        <div class="spacer"></div>
+        <span class="status" id="lastUpdate"></span>
+      </div>
+      <div id="tableWrap">
+        <table id="resultsTable">
+          <thead>
+            <tr>
+              <th data-key="pair">Pair</th>
+              <th data-key="tf">TF</th>
+              <th data-key="signal">Signaal</th>
+              <th data-key="strategy">Strategie</th>
+              <th data-key="price">Prijs</th>
+              <th data-key="rsi">RSI</th>
+              <th data-key="stoch">Stoch</th>
+              <th data-key="wghm">WGHM</th>
+              <th data-key="volume">Volume 24h</th>
+              <th data-key="updated">Update</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div id="empty">
+          Klik op <b>Start scanner</b> om Coinbase USDC/USD-paren op te halen en te scannen.<br>
+          Alles draait client-side — niets verlaat je browser behalve de API-aanroepen naar Coinbase (en Telegram, als je dat instelt).
+        </div>
+      </div>
+      <footer>
+        <span id="footLeft">CC Scanner Pro · statische webapp voor GitHub Pages</span>
+        <span id="footRight"></span>
+      </footer>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- persistence (safe: falls back to memory if localStorage unavailable) ---------- */
+const memStore = {};
+const storage = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v===null? d : JSON.parse(v);}catch(e){ return (k in memStore)? memStore[k] : d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ memStore[k]=v; } }
+};
+const $ = id => document.getElementById(id);
+
+/* ══════════════════════════ STRATEGY DEFINITIONS (ported 1:1) ══════════════════════════ */
+const LONG_STRATEGIES = [
+  { id: "off", label: "Uit — geen long-signalen", desc: "Deze richting wordt niet gescand." },
+  { id: "stobbnomargin", label: "STOBB No Margin", desc: "Stoch <20 + BB lower break + volume check" },
+  { id: "macdxup", label: "MACD Cross Up", desc: "MACD line crosses signal upward" },
+  { id: "stoxupos", label: "Stoch Oversold Cross Up", desc: "%K crosses %D up while %D oversold" },
+  { id: "pt", label: "Peaks & Troughs (HH/HL)", desc: "Higher high + higher low" },
+];
+const SHORT_STRATEGIES = [
+  { id: "off", label: "Uit — geen short-signalen", desc: "Deze richting wordt niet gescand." },
+  { id: "stobbexit", label: "STOBB Exit", desc: "Candle close/open at or above BB upper" },
+  { id: "macdxdown", label: "MACD Cross Down", desc: "MACD line crosses signal downward" },
+  { id: "stoxdownob", label: "Stoch Overbought Cross Down", desc: "%K crosses %D down while %D overbought" },
+  { id: "ptexit", label: "Peaks & Troughs (LH/LL)", desc: "Lower high + lower low" },
+];
+
+function renderStrategyGroup(container, list, name, defaultId){
+  container.innerHTML = list.map((s)=>`
+    <label class="strat-opt ${s.id===defaultId?'active':''}" data-id="${s.id}">
+      <input type="radio" name="${name}" value="${s.id}" ${s.id===defaultId?'checked':''}>
+      <div><div class="t">${s.label}</div><div class="d">${s.desc}</div></div>
+    </label>`).join('');
+  container.addEventListener('change', ()=>{
+    container.querySelectorAll('.strat-opt').forEach(el=>{
+      el.classList.toggle('active', el.querySelector('input').checked);
+    });
+    saveSettings();
+  });
+}
+renderStrategyGroup($('longStratGroup'), LONG_STRATEGIES, 'longStrat', 'stobbnomargin');
+renderStrategyGroup($('shortStratGroup'), SHORT_STRATEGIES, 'shortStrat', 'stobbexit');
+function getLongStrat(){ return document.querySelector('input[name=longStrat]:checked').value; }
+function getShortStrat(){ return document.querySelector('input[name=shortStrat]:checked').value; }
+function setLongStrat(id){
+  const el = document.querySelector(`input[name=longStrat][value="${id}"]`);
+  if(el){ el.checked = true; el.dispatchEvent(new Event('change', {bubbles:true})); }
+}
+function setShortStrat(id){
+  const el = document.querySelector(`input[name=shortStrat][value="${id}"]`);
+  if(el){ el.checked = true; el.dispatchEvent(new Event('change', {bubbles:true})); }
+}
+
+/* ---------- settings persistence ---------- */
+const ids = ['exCoinbaseSpot','exCoinbaseUSD','exCoinbaseFutures','tfSelect','earlyMode','volSelect','topN',
+  'strongFilter','wghmFilter','marketTrendFilter','divFilter',
+  'nBrowser','nSound','nTelegram','tgToken','tgChatId','customSymbols'];
+let symbolMode = 'top';
+let intervalSec = 60;
+
+function loadSettings(){
+  const s = storage.get('ccscanner_settings', {});
+  ids.forEach(id=>{
+    const el = $(id);
+    if(!el || !(id in s)) return;
+    if(el.type==='checkbox') el.checked = s[id];
+    else el.value = s[id];
+  });
+  if(s.longStrat) setLongStrat(s.longStrat);
+  if(s.shortStrat) setShortStrat(s.shortStrat);
+  if(s.symbolMode) setSymbolMode(s.symbolMode);
+  if(s.intervalSec) setInterval_(s.intervalSec);
+  $('tgFields').style.display = $('nTelegram').checked ? 'block' : 'none';
+  $('topNVal').textContent = $('topN').value;
+}
+function saveSettings(){
+  const s = {};
+  ids.forEach(id=>{
+    const el = $(id);
+    if(!el) return;
+    s[id] = el.type==='checkbox' ? el.checked : el.value;
+  });
+  s.longStrat = getLongStrat();
+  s.shortStrat = getShortStrat();
+  s.symbolMode = symbolMode;
+  s.intervalSec = intervalSec;
+  storage.set('ccscanner_settings', s);
+}
+document.addEventListener('change', e=>{
+  if(ids.includes(e.target.id)) saveSettings();
+  if(e.target.id==='nTelegram') $('tgFields').style.display = e.target.checked?'block':'none';
+  if(e.target.id==='topN') $('topNVal').textContent = e.target.value;
+});
+
+function setSymbolMode(mode){
+  symbolMode = mode;
+  document.querySelectorAll('#symbolModeToggle button').forEach(b=> b.classList.toggle('active', b.dataset.mode===mode));
+  $('topNField').style.display = mode==='top' ? 'block' : 'none';
+  $('customField').style.display = mode==='custom' ? 'block' : 'none';
+}
+$('symbolModeToggle').addEventListener('click', e=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  setSymbolMode(btn.dataset.mode); saveSettings();
+});
+function setInterval_(sec){
+  intervalSec = sec;
+  document.querySelectorAll('#intervalGroup button').forEach(b=> b.classList.toggle('active', parseInt(b.dataset.sec,10)===sec));
+}
+$('intervalGroup').addEventListener('click', e=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  setInterval_(parseInt(btn.dataset.sec,10)); saveSettings();
+});
+
+/* ══════════════════════════ INDICATOR ENGINE (ported 1:1 from cc-scanner.html) ══════════════════════════ */
+const sma = (arr, period) => {
+  const out = [];
+  for (let i = 0; i < arr.length; i++) {
+    if (i < period - 1) { out.push(NaN); continue; }
+    let s = 0;
+    for (let j = i - period + 1; j <= i; j++) s += arr[j];
+    out.push(s / period);
+  }
+  return out;
+};
+const ema = (arr, period) => {
+  const out = []; const k = 2/(period+1); let prev;
+  for (let i = 0; i < arr.length; i++) {
+    if (i === 0) { out.push(arr[0]); prev = arr[0]; }
+    else { const v = arr[i]*k + prev*(1-k); out.push(v); prev = v; }
+  }
+  return out;
+};
+const stdev = (arr, period) => {
+  const out = [];
+  for (let i = 0; i < arr.length; i++) {
+    if (i < period - 1) { out.push(NaN); continue; }
+    let mean = 0;
+    for (let j = i - period + 1; j <= i; j++) mean += arr[j];
+    mean /= period;
+    let v = 0;
+    for (let j = i - period + 1; j <= i; j++) v += (arr[j]-mean)**2;
+    out.push(Math.sqrt(v/period));
+  }
+  return out;
+};
+const bollingerBands = (closes, period=20, mult=2) => {
+  const mid = sma(closes, period);
+  const sd = stdev(closes, period);
+  return { middle: mid, upper: mid.map((m,i)=>m+mult*sd[i]), lower: mid.map((m,i)=>m-mult*sd[i]) };
+};
+const stochastic = (highs, lows, closes, period=14, smoothK=3, smoothD=3) => {
+  const rawK = [];
+  for (let i = 0; i < closes.length; i++) {
+    if (i < period-1) { rawK.push(NaN); continue; }
+    let hh=-Infinity, ll=Infinity;
+    for (let j=i-period+1; j<=i; j++){ if(highs[j]>hh) hh=highs[j]; if(lows[j]<ll) ll=lows[j]; }
+    const range = hh-ll;
+    rawK.push(range===0 ? 0 : ((closes[i]-ll)/range)*100);
+  }
+  const k = sma(rawK, smoothK);
+  const d = sma(k, smoothD);
+  return { k, d };
+};
+const macdCalc = (closes, fast=12, slow=26, signalP=9) => {
+  const ef = ema(closes, fast), es = ema(closes, slow);
+  const macdLine = ef.map((v,i)=> v - es[i]);
+  const valid = macdLine.slice(slow-1);
+  const sig = ema(valid, signalP);
+  const padded = new Array(slow-1).fill(NaN).concat(sig);
+  return { macd: macdLine, signal: padded };
+};
+const rsiCalc = (closes, period=14) => {
+  const out = new Array(closes.length).fill(NaN);
+  if(closes.length < period+1) return out;
+  const gains=[], losses=[];
+  for(let i=1;i<closes.length;i++){ const ch=closes[i]-closes[i-1]; gains.push(Math.max(ch,0)); losses.push(Math.max(-ch,0)); }
+  let ag=0, al=0;
+  for(let i=0;i<period;i++){ ag+=gains[i]; al+=losses[i]; }
+  ag/=period; al/=period;
+  out[period] = al===0 ? 100 : 100 - 100/(1+ag/al);
+  for(let i=period;i<gains.length;i++){
+    ag = (ag*(period-1)+gains[i])/period;
+    al = (al*(period-1)+losses[i])/period;
+    out[i+1] = al===0 ? 100 : 100 - 100/(1+ag/al);
+  }
+  return out;
+};
+const mfiCalc = (highs, lows, closes, volumes, period=14) => {
+  const tp = closes.map((c,i)=>(highs[i]+lows[i]+c)/3);
+  const mflow = tp.map((t,i)=> t*volumes[i]);
+  const out = new Array(closes.length).fill(NaN);
+  for(let i=period;i<closes.length;i++){
+    let pos=0, neg=0;
+    for(let j=i-period+1;j<=i;j++){ if(tp[j]>tp[j-1]) pos+=mflow[j]; else if(tp[j]<tp[j-1]) neg+=mflow[j]; }
+    out[i] = neg===0 ? 100 : 100 - 100/(1+pos/neg);
+  }
+  return out;
+};
+const findPeaksTroughs = (highs, lows, lookback=3) => {
+  const peaks=[], troughs=[];
+  for(let i=lookback;i<highs.length-lookback;i++){
+    let isP=true, isT=true;
+    for(let j=1;j<=lookback;j++){
+      if(highs[i]<=highs[i-j] || highs[i]<=highs[i+j]) isP=false;
+      if(lows[i]>=lows[i-j] || lows[i]>=lows[i+j]) isT=false;
+    }
+    if(isP) peaks.push({i, v:highs[i]});
+    if(isT) troughs.push({i, v:lows[i]});
+  }
+  return { peaks, troughs };
+};
+// WGHM — combineert RSI + MFI + reversal-candle + volume-confirmatie tot Long/Short-score
+const computeWGHM = (data, indicators) => {
+  const { closes, opens, volumes } = data;
+  const lc = closes.length - 2;
+  const r = indicators.r[lc], mf = indicators.mf[lc];
+
+  let rsiScore = 0;
+  if(!isNaN(r)){
+    if(r<25) rsiScore=2; else if(r<35) rsiScore=1;
+    else if(r>75) rsiScore=-2; else if(r>65) rsiScore=-1;
+  }
+  let mfiScore = 0;
+  if(!isNaN(mf)){
+    if(mf<20) mfiScore=2; else if(mf<35) mfiScore=1;
+    else if(mf>80) mfiScore=-2; else if(mf>65) mfiScore=-1;
+  }
+  let reversalScore = 0;
+  if(lc>=1){
+    const lastGreen = closes[lc]>opens[lc], lastRed = closes[lc]<opens[lc];
+    const prevRed = closes[lc-1]<opens[lc-1], prevGreen = closes[lc-1]>opens[lc-1];
+    if(lastGreen && prevRed && (r<40||mf<40)) reversalScore=2;
+    else if(lastGreen && (r<40||mf<40)) reversalScore=1;
+    else if(lastRed && prevGreen && (r>60||mf>60)) reversalScore=-2;
+    else if(lastRed && (r>60||mf>60)) reversalScore=-1;
+  }
+  let volScore = 0;
+  if(lc>=10){
+    let avgVol=0;
+    for(let i=lc-10;i<lc;i++) avgVol+=volumes[i];
+    avgVol/=10;
+    const curVol=volumes[lc];
+    if(avgVol>0){
+      const ratio=curVol/avgVol;
+      if(ratio>2 && reversalScore>0) volScore=1;
+      else if(ratio>2 && reversalScore<0) volScore=-1;
+      else if(ratio>3) volScore = reversalScore>0?1:-1;
+    }
+  }
+  const total = rsiScore+mfiScore+reversalScore+volScore;
+  if(total>=5) return "High - BUY";
+  if(total>=3) return "Mid - BUY";
+  if(total>=1) return "Low - BUY";
+  if(total<=-5) return "High - SELL";
+  if(total<=-3) return "Mid - SELL";
+  if(total<=-1) return "Low - SELL";
+  return "None - Neutral";
+};
+const wghmStyle = (wghm) => {
+  if(wghm==="High - BUY") return {color:"#dc2626", emoji:"🟥", side:"long"};
+  if(wghm==="Mid - BUY") return {color:"#f97316", emoji:"🟧", side:"long"};
+  if(wghm==="Low - BUY") return {color:"#eab308", emoji:"🟨", side:"long"};
+  if(wghm==="High - SELL") return {color:"#7c3aed", emoji:"🟪", side:"short"};
+  if(wghm==="Mid - SELL") return {color:"#2563eb", emoji:"🟦", side:"short"};
+  if(wghm==="Low - SELL") return {color:"#0891b2", emoji:"🟦", side:"short"};
+  return {color:"#9ca3af", emoji:"⬜", side:"neutral"};
+};
+// LiqBox — zwaarste volume-zone in historie
+const computeLiqBox = (data) => {
+  const { times, highs, lows, closes, volumes } = data;
+  const lc = closes.length - 2;
+  if(lc<50) return null;
+  let maxIdx=-1, maxVol=-1;
+  for(let i=0;i<lc-5;i++){ if(volumes[i]>maxVol){ maxVol=volumes[i]; maxIdx=i; } }
+  if(maxIdx<0) return null;
+  const high=highs[maxIdx], low=lows[maxIdx], mid=(high+low)/2;
+  const curPrice = closes[lc];
+  return { time: times[maxIdx], high, low, deltaPct: ((curPrice-mid)/mid)*100, rangePct: ((high-low)/low)*100 };
+};
+// RSI-divergentie
+const detectDivergence = (data, indicators, lookbackCandles=30) => {
+  const { lows, highs } = data;
+  const r = indicators.r;
+  const lc = lows.length - 2;
+  if(lc<5 || !r || r.length<lc) return null;
+
+  const findLocalLows = (start,end) => {
+    const pts=[];
+    for(let i=start;i<=end;i++){
+      if(i<2 || i>lows.length-3) continue;
+      if(lows[i]<lows[i-1] && lows[i]<lows[i-2] && lows[i]<lows[i+1] && lows[i]<lows[i+2]) pts.push({idx:i, price:lows[i], rsi:r[i]});
+    }
+    return pts;
+  };
+  const findLocalHighs = (start,end) => {
+    const pts=[];
+    for(let i=start;i<=end;i++){
+      if(i<2 || i>highs.length-3) continue;
+      if(highs[i]>highs[i-1] && highs[i]>highs[i-2] && highs[i]>highs[i+1] && highs[i]>highs[i+2]) pts.push({idx:i, price:highs[i], rsi:r[i]});
+    }
+    return pts;
+  };
+  const startIdx = Math.max(0, lc-lookbackCandles);
+
+  const lowsPts = findLocalLows(startIdx, lc);
+  let bullDiv = null;
+  if(lowsPts.length>=2){
+    const last = lowsPts[lowsPts.length-1];
+    for(let j=lowsPts.length-2;j>=0;j--){
+      const prev = lowsPts[j];
+      if(last.idx-prev.idx<3) continue;
+      if(last.idx-prev.idx>lookbackCandles) break;
+      if(last.price<prev.price && last.rsi>prev.rsi && !isNaN(last.rsi) && !isNaN(prev.rsi)){
+        bullDiv = {type:"bullish", lastIdx:last.idx, prevIdx:prev.idx, lastPrice:last.price, prevPrice:prev.price, lastRsi:last.rsi, prevRsi:prev.rsi, candlesAgo: lc-last.idx};
+        break;
+      }
+    }
+  }
+  const highsPts = findLocalHighs(startIdx, lc);
+  let bearDiv = null;
+  if(highsPts.length>=2){
+    const last = highsPts[highsPts.length-1];
+    for(let j=highsPts.length-2;j>=0;j--){
+      const prev = highsPts[j];
+      if(last.idx-prev.idx<3) continue;
+      if(last.idx-prev.idx>lookbackCandles) break;
+      if(last.price>prev.price && last.rsi<prev.rsi && !isNaN(last.rsi) && !isNaN(prev.rsi)){
+        bearDiv = {type:"bearish", lastIdx:last.idx, prevIdx:prev.idx, lastPrice:last.price, prevPrice:prev.price, lastRsi:last.rsi, prevRsi:prev.rsi, candlesAgo: lc-last.idx};
+        break;
+      }
+    }
+  }
+  if(bullDiv && bearDiv) return bullDiv.lastIdx > bearDiv.lastIdx ? bullDiv : bearDiv;
+  return bullDiv || bearDiv || null;
+};
+
+/* ══════════════════════════ STRATEGY EVALUATOR (ported 1:1) ══════════════════════════ */
+function evalStrategies(data, longId, shortId, earlyMode){
+  const { opens, highs, lows, closes } = data;
+  const n = closes.length;
+  const lc = earlyMode ? n-1 : n-2;
+  if(lc < 30) return null;
+
+  const bb = bollingerBands(closes,20,2);
+  const sto = stochastic(highs, lows, closes, 14,3,3);
+  const m = macdCalc(closes,12,26,9);
+  const pt = findPeaksTroughs(highs, lows, 3);
+
+  const hits = [];
+
+  if(longId==="stobbnomargin"){
+    const k=sto.k[lc], d=sto.d[lc];
+    const stochOK = !isNaN(k)&&!isNaN(d)&&k<20&&d<20;
+    const isGreen = closes[lc]>=opens[lc];
+    const refPrice = isGreen ? opens[lc] : closes[lc];
+    const bbOK = !isNaN(bb.lower[lc]) && refPrice<bb.lower[lc];
+    const last14 = data.volumes.slice(lc-13, lc+1);
+    const novol = last14.filter(v=>v===0).length;
+    const volOK = novol<=4;
+    if(stochOK && bbOK && volOK) hits.push({id:"stobbnomargin", side:"long", label:"STOBB No Margin"});
+  }
+  if(longId==="macdxup"){
+    const cur=m.macd[lc], curS=m.signal[lc], prev=m.macd[lc-1], prevS=m.signal[lc-1];
+    if(!isNaN(cur)&&!isNaN(curS)&&!isNaN(prev)&&!isNaN(prevS)&&prev<=prevS&&cur>curS)
+      hits.push({id:"macdxup", side:"long", label:"MACD Cross Up"});
+  }
+  if(longId==="stoxupos"){
+    const k=sto.k[lc], d=sto.d[lc], pk=sto.k[lc-1], pd=sto.d[lc-1];
+    if(!isNaN(k)&&!isNaN(d)&&!isNaN(pk)&&!isNaN(pd)&&d<20&&pk<=pd&&k>d)
+      hits.push({id:"stoxupos", side:"long", label:"Stoch Oversold Cross Up"});
+  }
+  if(longId==="pt"){
+    if(pt.peaks.length>=2 && pt.troughs.length>=2){
+      const p2=pt.peaks.slice(-2), t2=pt.troughs.slice(-2);
+      if(p2[1].v>p2[0].v && t2[1].v>t2[0].v) hits.push({id:"pt", side:"long", label:"Peaks & Troughs HH/HL"});
+    }
+  }
+  if(shortId==="stobbexit"){
+    const isGreen = closes[lc]>=opens[lc];
+    const refPrice = isGreen ? closes[lc] : opens[lc];
+    if(!isNaN(bb.upper[lc]) && refPrice>=bb.upper[lc]) hits.push({id:"stobbexit", side:"short", label:"STOBB Exit"});
+  }
+  if(shortId==="macdxdown"){
+    const cur=m.macd[lc], curS=m.signal[lc], prev=m.macd[lc-1], prevS=m.signal[lc-1];
+    if(!isNaN(cur)&&!isNaN(curS)&&!isNaN(prev)&&!isNaN(prevS)&&prev>=prevS&&cur<curS)
+      hits.push({id:"macdxdown", side:"short", label:"MACD Cross Down"});
+  }
+  if(shortId==="stoxdownob"){
+    const k=sto.k[lc], d=sto.d[lc], pk=sto.k[lc-1], pd=sto.d[lc-1];
+    if(!isNaN(k)&&!isNaN(d)&&!isNaN(pk)&&!isNaN(pd)&&d>80&&pk>=pd&&k<d)
+      hits.push({id:"stoxdownob", side:"short", label:"Stoch Overbought Cross Down"});
+  }
+  if(shortId==="ptexit"){
+    if(pt.peaks.length>=2 && pt.troughs.length>=2){
+      const p2=pt.peaks.slice(-2), t2=pt.troughs.slice(-2);
+      if(p2[1].v<p2[0].v && t2[1].v<t2[0].v) hits.push({id:"ptexit", side:"short", label:"Peaks & Troughs LH/LL"});
+    }
+  }
+
+  return { hits, lc, bb, sto };
+}
+
+function evaluate(candles, vol24, longId, shortId, earlyMode, filters){
+  if(!candles || candles.length < 32) return null;
+  const opens=candles.map(c=>c[3]), lows=candles.map(c=>c[1]), highs=candles.map(c=>c[2]),
+        closes=candles.map(c=>c[4]), volumes=candles.map(c=>c[5]), times=candles.map(c=>c[0]);
+  const data = { times, opens, highs, lows, closes, volumes };
+
+  const evalRes = evalStrategies(data, longId, shortId, earlyMode);
+  if(!evalRes || evalRes.hits.length===0) return null;
+  const { hits, lc, bb, sto } = evalRes;
+
+  const r = rsiCalc(closes,14);
+  const mf = mfiCalc(highs, lows, closes, volumes, 14);
+  const price = closes[lc];
+  const bbWidth = ((bb.upper[lc]-bb.lower[lc])/bb.middle[lc])*100;
+
+  const last20c = closes.slice(Math.max(0,lc-19), lc+1);
+  const last20o = opens.slice(Math.max(0,lc-19), lc+1);
+  const greens = last20c.filter((c,idx)=>c>last20o[idx]).length;
+  const marketTrend = last20c.length ? (greens/last20c.length)*100 : 50;
+
+  const wghm = computeWGHM(data, {r, mf});
+  const wStyle = wghmStyle(wghm);
+  const divergence = detectDivergence(data, {r}, 30);
+  const liqBox = computeLiqBox(data);
+
+  // pick the strongest side if both long & short hit (rare, but be deterministic: prefer long)
+  const longHit = hits.find(h=>h.side==='long');
+  const shortHit = hits.find(h=>h.side==='short');
+  const results = [];
+
+  [ {hit:longHit, dirIsLong:true}, {hit:shortHit, dirIsLong:false} ].forEach(({hit, dirIsLong})=>{
+    if(!hit) return;
+    const conds = [
+      dirIsLong ? r[lc]<35 : r[lc]>65,
+      dirIsLong ? mf[lc]<35 : mf[lc]>65,
+      dirIsLong ? wStyle.side==='long' : wStyle.side==='short',
+      dirIsLong ? marketTrend>50 : marketTrend<50,
+      bbWidth>=1.5
+    ];
+    const strength = conds.filter(Boolean).length;
+    if(filters.strongOnly && strength<3) return;
+    if(filters.wghmFilter){
+      const ok = dirIsLong ? (wghm==="Mid - BUY"||wghm==="High - BUY") : (wghm==="Mid - SELL"||wghm==="High - SELL");
+      if(!ok) return;
+    }
+    if(filters.marketTrendFilter){
+      const ok = dirIsLong ? marketTrend>=50 : marketTrend<=50;
+      if(!ok) return;
+    }
+    if(filters.divFilter){
+      const wantType = dirIsLong ? "bullish" : "bearish";
+      if(!divergence || divergence.type!==wantType) return;
+    }
+    results.push({
+      signal: dirIsLong?'long':'short', label: hit.label, price, rsi:r[lc], stoch:sto.k[lc],
+      bbWidth, mfi:mf[lc], wghm, wghmStyle:wStyle, divergence, liqBox, marketTrend, strength
+    });
+  });
+
+  if(results.length===0) return null;
+  // return the first (long takes priority for display if both fire — extremely rare)
+  return results[0];
+}
+
+/* ---------- Coinbase data layer: Advanced Trade (primary) with Exchange-API fallback ---------- */
+const API_ADV = 'https://api.coinbase.com/api/v3/brokerage/market';
+const API_EXCH = 'https://api.exchange.coinbase.com';
+const GRAN_MAP_ADV = {1:'ONE_MINUTE', 2:'ONE_MINUTE', 3:'ONE_MINUTE', 5:'FIVE_MINUTE', 15:'FIFTEEN_MINUTE', 60:'ONE_HOUR', 240:'FOUR_HOUR'};
+const GRAN_SECONDS_ADV = {ONE_MINUTE:60, FIVE_MINUTE:300, FIFTEEN_MINUTE:900, ONE_HOUR:3600, FOUR_HOUR:14400};
+const RESAMPLE_ADV = {2:2, 3:3};
+const GRAN_SEC_EXCH = {1:60, 2:60, 3:60, 5:300, 15:900, 60:3600, 240:3600};
+const RESAMPLE_EXCH = {2:2, 3:3, 240:4};
+
+let dataSource = null; // 'advanced' | 'exchange' — decided the first time refreshProducts succeeds
+let lastFetchError = '';
+
+async function fetchJSON(url, timeoutMs=15000){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), timeoutMs);
+  try{
+    const res = await fetch(url, {headers:{'Accept':'application/json'}, signal: ctrl.signal});
+    if(!res.ok) throw new Error(`HTTP ${res.status} (${res.statusText || 'error'}) — ${url}`);
+    return await res.json();
+  }catch(e){
+    if(e.name==='AbortError') throw new Error(`Time-out (>${timeoutMs/1000}s) bij ${url}`);
+    throw new Error(`${e.message}`);
+  }finally{
+    clearTimeout(t);
+  }
+}
+
+function makeQueue(concurrency){
+  let active=0; const q=[];
+  function runNext(){
+    if(active>=concurrency || q.length===0) return;
+    active++;
+    const {fn,resolve,reject} = q.shift();
+    fn().then(resolve, reject).finally(()=>{ active--; runNext(); });
+  }
+  return fn => new Promise((resolve,reject)=>{ q.push({fn,resolve,reject}); runNext(); });
+}
+const enqueue = makeQueue(4);
+
+async function fetchProductPage(params){
+  let all = [];
+  let cursor = '';
+  for(let page=0; page<10; page++){
+    const url = `${API_ADV}/products?${params}&limit=250${cursor?'&cursor='+encodeURIComponent(cursor):''}`;
+    const data = await enqueue(()=> fetchJSON(url));
+    all = all.concat(data.products||[]);
+    if(data.pagination && data.pagination.has_next && data.pagination.next_cursor) cursor = data.pagination.next_cursor;
+    else break;
+  }
+  return all;
+}
+
+async function fetchAdvancedProducts(){
+  const wantUSDC = $('exCoinbaseSpot').checked;
+  const wantUSD = $('exCoinbaseUSD').checked;
+  const wantFutures = $('exCoinbaseFutures').checked;
+  const quotes = [];
+  if(wantUSDC) quotes.push('USDC');
+  if(wantUSD) quotes.push('USD');
+
+  let combined = [];
+
+  if(quotes.length){
+    const spotAll = await fetchProductPage('product_type=SPOT');
+    if(spotAll.length===0) throw new Error('Advanced Trade API gaf 0 spot-producten terug');
+    const tradeable = spotAll.filter(p => quotes.includes(p.quote_currency_id) && !p.is_disabled && !p.trading_disabled);
+    // dedupe spot only: if a base asset lists both -USD and -USDC, keep the USDC listing
+    const byBase = new Map();
+    tradeable.forEach(p=>{
+      const existing = byBase.get(p.base_currency_id);
+      if(!existing || (p.quote_currency_id==='USDC' && existing.quote_currency_id!=='USDC')) byBase.set(p.base_currency_id, p);
+    });
+    combined = combined.concat(Array.from(byBase.values()).map(p=>({
+      id: p.product_id, price: parseFloat(p.price), volume24: parseFloat(p.approximate_quote_24h_volume || p.volume_24h || 0), kind:'spot'
+    })));
+  }
+
+  if(wantFutures){
+    try{
+      const futAll = await fetchProductPage('product_type=FUTURE&contract_expiry_type=PERPETUAL');
+      const futTradeable = futAll.filter(p => !p.is_disabled && !p.trading_disabled);
+      combined = combined.concat(futTradeable.map(p=>({
+        id: p.product_id, price: parseFloat(p.price), volume24: parseFloat(p.approximate_quote_24h_volume || p.volume_24h || 0), kind:'future'
+      })));
+    }catch(e){
+      console.warn('Futures ophalen mislukt, ga verder met alleen spot:', e.message);
+    }
+  }
+
+  if(combined.length===0) throw new Error('Advanced Trade API gaf 0 producten terug (controleer exchange-selectie)');
+  return combined;
+}
+
+async function fetchExchangeProducts(){
+  const wantUSDC = $('exCoinbaseSpot').checked;
+  const wantUSD = $('exCoinbaseUSD').checked;
+  const quotes = [];
+  if(wantUSDC) quotes.push('USDC');
+  if(wantUSD) quotes.push('USD');
+
+  const all = await fetchJSON(`${API_EXCH}/products`);
+  if(!Array.isArray(all) || all.length===0) throw new Error('Exchange API gaf 0 producten terug');
+
+  const tradeable = all.filter(p => quotes.includes(p.quote_currency) && !p.trading_disabled && p.status==='online');
+  const byBase = new Map();
+  tradeable.forEach(p=>{
+    const existing = byBase.get(p.base_currency);
+    if(!existing || (p.quote_currency==='USDC' && existing.quote_currency!=='USDC')) byBase.set(p.base_currency, p);
+  });
+  // Exchange API's /products endpoint doesn't include live price/volume — those get filled in lazily per pair during scanning.
+  return Array.from(byBase.values()).map(p=>({ id: p.id, price: null, volume24: null }));
+}
+
+async function fetchAllProducts(){
+  if(dataSource !== 'exchange'){
+    try{
+      const result = await fetchAdvancedProducts();
+      dataSource = 'advanced';
+      lastFetchError = '';
+      return result;
+    }catch(e){
+      console.warn('Advanced Trade API faalde, val terug op Exchange API:', e.message);
+      lastFetchError = e.message;
+    }
+  }
+  const result = await fetchExchangeProducts(); // if this also throws, it propagates up (both sources down)
+  dataSource = 'exchange';
+  return result;
+}
+
+const exchangeStatsCache = new Map(); // productId -> {price, volume24, ts}
+async function fetchExchangeStats(productId){
+  const cached = exchangeStatsCache.get(productId);
+  if(cached && Date.now()-cached.ts < 5*60*1000) return cached;
+  const stats = await enqueue(()=> fetchJSON(`${API_EXCH}/products/${productId}/stats`));
+  const price = parseFloat(stats.last||0);
+  const volume24 = parseFloat(stats.volume||0) * price;
+  const entry = {price, volume24, ts: Date.now()};
+  exchangeStatsCache.set(productId, entry);
+  return entry;
+}
+
+// Build the actual scan list from the full product universe, applying symbol-source (top-N / custom list) + volume floor.
+// In Exchange-API fallback mode, volumes aren't known up front, so top-N sorting falls back to alphabetical
+// and the volume filter is applied lazily once each pair's stats have been fetched during scanning.
+function buildScanList(allProducts){
+  const minVol = parseFloat($('volSelect').value)||0;
+  let list;
+  if(symbolMode==='custom'){
+    const raw = $('customSymbols').value.split(/[\n,]/).map(s=>s.trim().toUpperCase()).filter(Boolean);
+    const byId = new Map(allProducts.map(p=>[p.id.toUpperCase(), p]));
+    list = raw.map(id=> byId.get(id) || {id, price:null, volume24:0});
+  } else {
+    const n = parseInt($('topN').value,10);
+    if(dataSource==='exchange'){
+      list = allProducts.slice().sort((a,b)=> a.id.localeCompare(b.id)).slice(0, n);
+    } else {
+      list = allProducts.slice().sort((a,b)=> b.volume24-a.volume24).slice(0, n);
+    }
+  }
+  if(dataSource==='exchange') return list; // volume floor applied lazily per pair while scanning
+  return list.filter(p=> p.volume24 >= minVol);
+}
+
+async function fetchCandles(productId, tfMinutes){
+  if(dataSource==='exchange'){
+    const graSec = GRAN_SEC_EXCH[tfMinutes];
+    const group = RESAMPLE_EXCH[tfMinutes] || 1;
+    const raw = await enqueue(()=> fetchJSON(`${API_EXCH}/products/${productId}/candles?granularity=${graSec}`));
+    let candles = raw.slice().sort((a,b)=>a[0]-b[0]); // [time, low, high, open, close, volume]
+    if(group>1){
+      const resampled = [];
+      for(let i=0;i+group<=candles.length;i+=group){
+        const chunk = candles.slice(i,i+group);
+        resampled.push([chunk[0][0], Math.min(...chunk.map(c=>c[1])), Math.max(...chunk.map(c=>c[2])), chunk[0][3], chunk[chunk.length-1][4], chunk.reduce((a,c)=>a+c[5],0)]);
+      }
+      candles = resampled;
+    }
+    return candles;
+  }
+
+  const granularity = GRAN_MAP_ADV[tfMinutes];
+  const graSec = GRAN_SECONDS_ADV[granularity];
+  const group = RESAMPLE_ADV[tfMinutes] || 1;
+  const need = 300;
+  const baseCandlesNeeded = Math.min(350, need*group);
+  const end = Math.floor(Date.now()/1000);
+  const start = end - baseCandlesNeeded*graSec;
+  const url = `${API_ADV}/products/${productId}/candles?start=${start}&end=${end}&granularity=${granularity}&limit=350`;
+  const data = await enqueue(()=> fetchJSON(url));
+  let candles = (data.candles||[]).map(c=>[Number(c.start), parseFloat(c.low), parseFloat(c.high), parseFloat(c.open), parseFloat(c.close), parseFloat(c.volume)])
+    .sort((a,b)=>a[0]-b[0]);
+  if(group>1){
+    const resampled = [];
+    for(let i=0;i+group<=candles.length;i+=group){
+      const chunk = candles.slice(i,i+group);
+      resampled.push([chunk[0][0], Math.min(...chunk.map(c=>c[1])), Math.max(...chunk.map(c=>c[2])), chunk[0][3], chunk[chunk.length-1][4], chunk.reduce((a,c)=>a+c[5],0)]);
+    }
+    candles = resampled;
+  }
+  return candles;
+}
+
+
+/* ---------- notifications ---------- */
+let audioCtx=null;
+function beep(){
+  if(!$('nSound').checked) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.frequency.value = 880; g.gain.value=0.08;
+    o.start(); setTimeout(()=>o.stop(), 180);
+  }catch(e){}
+}
+function browserNotify(title, body){
+  if(!$('nBrowser').checked) return;
+  if(!('Notification' in window)) return;
+  if(Notification.permission==='granted') new Notification(title,{body});
+  else if(Notification.permission!=='denied') Notification.requestPermission().then(p=>{ if(p==='granted') new Notification(title,{body}); });
+}
+function tgFormat(pair, tfLabel, res){
+  const dot = res.signal==='long' ? '🟢' : '🔴';
+  const label = res.signal==='long' ? 'Koopsignaal' : 'Verkoopsignaal';
+  const wIcon = res.wghmStyle.emoji;
+  let extra = `\n\nStrategie\n${res.label}\n\nWGHM\n${wIcon} ${res.wghm}\n\nMarkttrend\n${res.marketTrend.toFixed(0)}% bullish (laatste 20 candles)`;
+  if(res.divergence) extra += `\n\nDivergentie\n${res.divergence.type==='bullish'?'🟢 Bullish':'🔴 Bearish'} · ${res.divergence.candlesAgo} candles geleden`;
+  return `${dot} ${tfLabel}\n${pair}\nCoinbase Spot\n\n${label}\n\nPrijs\n${fmt(res.price)}\n\nRSI\n${res.rsi.toFixed(0)}\n\nStoch\n${res.stoch.toFixed(0)}\n\nBollinger Width\n${res.bbWidth.toFixed(1)}%${extra}`;
+}
+async function sendTelegram(text){
+  if(!$('nTelegram').checked) return;
+  const token = $('tgToken').value.trim(), chatId = $('tgChatId').value.trim();
+  if(!token || !chatId) return;
+  try{
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({chat_id:chatId, text})
+    });
+  }catch(e){ console.warn('Telegram send failed', e); }
+}
+function updateTgPreview(){
+  const fake = {price:107432.20, rsi:29, stoch:14, bbWidth:3.7, signal:'long', label:'STOBB No Margin',
+    wghm:'Mid - BUY', wghmStyle:wghmStyle('Mid - BUY'), marketTrend:65, divergence:{type:'bullish', candlesAgo:4}};
+  $('tgPreviewBox').textContent = tgFormat('BTC-USDC','5m', fake);
+}
+
+/* ---------- table state ---------- */
+let rowsMap = new Map();
+let sortKey = 'volume', sortDir = -1;
+let searchTerm = '';
+
+function fmt(n){
+  if(n==null || isNaN(n)) return '—';
+  if(n>=1000) return n.toLocaleString('nl-NL',{maximumFractionDigits:2});
+  if(n>=1) return n.toFixed(4);
+  return n.toPrecision(4);
+}
+function fmtVol(n){
+  if(n>=1e9) return (n/1e9).toFixed(2)+'B';
+  if(n>=1e6) return (n/1e6).toFixed(2)+'M';
+  if(n>=1e3) return (n/1e3).toFixed(1)+'k';
+  return n.toFixed(0);
+}
+const TF_LABELS = {1:'1m',2:'2m',3:'3m',5:'5m',15:'15m',60:'1h',240:'4h'};
+// TradingView doesn't necessarily use the exact "-PERP-INTX" suffix, so for futures we
+// best-effort link to the base asset's USD chart instead of guessing a possibly-wrong symbol.
+function tvSymbol(pair){
+  if(pair.includes('PERP')) return pair.split('-')[0] + 'USD';
+  return pair.replace('-','');
+}
+
+function renderTable(){
+  const tbody = $('tbody');
+  let rows = Array.from(rowsMap.values());
+  if(searchTerm) rows = rows.filter(r=> r.pair.toLowerCase().includes(searchTerm));
+  rows.sort((a,b)=>{
+    let av=a[sortKey], bv=b[sortKey];
+    if(typeof av==='string') return sortDir*av.localeCompare(bv);
+    return sortDir*((av??-Infinity)-(bv??-Infinity));
+  });
+  $('countText').textContent = rows.length + ' resultaten';
+  $('empty').style.display = rows.length? 'none':'block';
+  tbody.innerHTML = rows.map(r=>{
+    const sigClass = r.signal==='long'?'sig-long':(r.signal==='short'?'sig-short':'sig-none');
+    const sigText = r.signal==='long'?'LONG':(r.signal==='short'?'SHORT':'—');
+    const wStyle = r.wghmObj || {color:'var(--muted)', emoji:'⬜'};
+    return `<tr data-pair="${r.pair}">
+      <td class="pairname">${r.pair}</td>
+      <td>${TF_LABELS[r.tf]}</td>
+      <td><span class="${sigClass}">${sigText}</span></td>
+      <td class="strat-tag">${r.strategy||'—'}</td>
+      <td>${fmt(r.price)}</td>
+      <td>${r.rsi!=null? r.rsi.toFixed(0):'—'}</td>
+      <td>${r.stoch!=null? r.stoch.toFixed(0):'—'}</td>
+      <td><span class="wghm-badge" style="color:${wStyle.color}">${wStyle.emoji} ${r.wghm||'—'}</span></td>
+      <td>${fmtVol(r.volume||0)}</td>
+      <td style="color:var(--muted)">${r.updated}</td>
+    </tr>`;
+  }).join('');
+}
+document.querySelectorAll('#resultsTable thead th').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.key;
+    if(sortKey===key) sortDir*=-1; else { sortKey=key; sortDir=-1; }
+    renderTable();
+  });
+});
+$('search').addEventListener('input', e=>{ searchTerm = e.target.value.toLowerCase(); renderTable(); });
+$('tbody').addEventListener('click', e=>{
+  const tr = e.target.closest('tr'); if(!tr) return;
+  const pair = tr.dataset.pair;
+  window.open(`https://www.tradingview.com/chart/?symbol=COINBASE:${tvSymbol(pair)}`, '_blank');
+});
+
+/* ---------- scan loop ---------- */
+let running = false;
+let allProducts = [];
+let scanTimer = null;
+
+async function refreshProducts(){
+  allProducts = await fetchAllProducts();
+  $('topNMax').textContent = dataSource==='exchange'
+    ? `(van ${allProducts.length} beschikbaar · fallback-modus, zie hint)`
+    : `(van ${allProducts.length} beschikbaar)`;
+}
+
+async function scanOne(product, tf){
+  // Exchange-API fallback doesn't return volume/price in the product list — fetch it lazily per pair.
+  if(dataSource==='exchange' && product.volume24==null){
+    const stats = await fetchExchangeStats(product.id);
+    product.price = stats.price;
+    product.volume24 = stats.volume24;
+  }
+  const minVol = parseFloat($('volSelect').value)||0;
+  if(dataSource==='exchange' && product.volume24 < minVol) return;
+
+  const earlyMode = $('earlyMode').checked;
+  const filters = {
+    strongOnly: $('strongFilter').checked,
+    wghmFilter: $('wghmFilter').checked,
+    marketTrendFilter: $('marketTrendFilter').checked,
+    divFilter: $('divFilter').checked
+  };
+  const candles = await fetchCandles(product.id, tf);
+  const result = evaluate(candles, product.volume24, getLongStrat(), getShortStrat(), earlyMode, filters);
+  if(!result) return;
+
+  const key = product.id+':'+tf;
+  const prevRow = rowsMap.get(key);
+  const wasSignal = prevRow ? prevRow.signal : 'none';
+
+  const row = {
+    pair: product.id, tf, price: result.price, rsi: result.rsi, stoch: result.stoch,
+    volume: product.volume24, signal: result.signal, strategy: result.label,
+    wghm: result.wghm, wghmObj: result.wghmStyle, updated: new Date().toLocaleTimeString('nl-NL')
+  };
+  rowsMap.set(key, row);
+
+  if(result.signal!==wasSignal){
+    const title = `${result.signal==='long'?'🟢 Koopsignaal':'🔴 Verkoopsignaal'} · ${product.id} · ${result.label}`;
+    beep();
+    browserNotify(title, `Prijs ${fmt(result.price)} · RSI ${result.rsi.toFixed(0)} · WGHM ${result.wghm}`);
+    sendTelegram(tgFormat(product.id, TF_LABELS[tf], result));
+  }
+}
+
+function showError(msg){
+  $('statusText').innerHTML = `<span style="color:var(--red)">⚠ ${msg}</span>`;
+  $('liveDot').classList.add('off');
+}
+
+async function scanCycle(){
+  // Every failure path below is caught here — nothing is allowed to reject silently and freeze the UI.
+  try{
+    const cycleStart = Date.now();
+    const tf = parseInt($('tfSelect').value,10);
+    $('statusText').textContent = 'Paren ophalen…';
+    await refreshProducts();
+    if(!running) return;
+
+    const scanList = buildScanList(allProducts);
+    if(scanList.length===0){
+      showError('Geen paren gevonden met de huidige filters/instellingen. Pas volume-filter, top-N of eigen lijst aan.');
+      running = false; $('startBtn').style.display='inline-block'; $('stopBtn').style.display='none';
+      return;
+    }
+
+    let done=0;
+    const total = scanList.length;
+    for(const product of scanList){
+      if(!running) return;
+      await scanOne(product, tf).catch(e=>console.warn(product.id, e.message));
+      done++;
+      $('progressBar').style.width = ((done/total)*100).toFixed(1)+'%';
+      const srcNote = dataSource==='exchange' ? ' · fallback-bron' : '';
+      $('statusText').innerHTML = `Scannen… <b>${done}/${total}</b> · ${TF_LABELS[tf]}${srcNote}`;
+      renderTable();
+    }
+    $('lastUpdate').textContent = 'Laatste volledige ronde: ' + new Date().toLocaleTimeString('nl-NL');
+    $('progressBar').style.width='0%';
+    if(!running) return;
+    const elapsed = Date.now()-cycleStart;
+    const wait = Math.max(0, intervalSec*1000 - elapsed);
+    scanTimer = setTimeout(()=> scanCycle(), wait);
+  }catch(e){
+    console.error('scanCycle failed:', e);
+    showError(`Kon geen data ophalen (${e.message}). Klik Start om opnieuw te proberen.`);
+    running = false;
+    $('startBtn').style.display='inline-block';
+    $('stopBtn').style.display='none';
+  }
+}
+
+function start(){
+  running = true;
+  $('startBtn').style.display='none';
+  $('stopBtn').style.display='inline-block';
+  $('liveDot').classList.remove('off');
+  scanCycle(); // intentionally not awaited — it manages its own errors and keeps looping via setTimeout
+}
+function stop(){
+  running = false;
+  clearTimeout(scanTimer);
+  $('startBtn').style.display='inline-block';
+  $('stopBtn').style.display='none';
+  $('liveDot').classList.add('off');
+  $('statusText').textContent = `Gestopt · ${allProducts.length} paren geladen`;
+}
+
+$('startBtn').addEventListener('click', start);
+$('stopBtn').addEventListener('click', stop);
+$('toggleSettings').addEventListener('click', ()=> $('settings').classList.toggle('collapsed'));
+
+/* ---------- init ---------- */
+loadSettings();
+updateTgPreview();
+document.addEventListener('change', updateTgPreview);
+$('footRight').textContent = 'Data: Coinbase Advanced Trade — publieke market-endpoints (geen API-key nodig)';
+
+})();
+</script>
+</body>
+</html>
